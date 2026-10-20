@@ -1,0 +1,664 @@
+<title>Dynasty</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dynasty">
+<meta name="theme-color" content="#0A0F1C">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: broadcast franchise menu. Sticky score bug on top, one scrolling column, thumb-zone tab bar at the bottom. */
+:root {
+  --bg: #0A0F1C;        /* stadium-night navy */
+  --panel: #121A2C;     /* card slate */
+  --panel-2: #19233B;   /* raised slate */
+  --line: #26324F;      /* hairline */
+  --fg: #EEF2FA;        /* broadcast white */
+  --muted: #8E9AB8;     /* secondary */
+  --gold: #F2B33D;      /* accent */
+  --gold-ink: #1A1204;  /* text on gold */
+  --good: #3ED598;
+  --bad: #FF7A7A;
+  --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --r: 14px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.4;
+  -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--bg); }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+button:focus-visible, input:focus-visible, label:focus-within { outline: 2px solid var(--gold); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+.disp { font-family: var(--font-display); text-transform: uppercase; letter-spacing: .02em; }
+.label { font-family: var(--font-display); text-transform: uppercase; letter-spacing: .12em; font-size: 12px; font-weight: 600; color: var(--muted); }
+
+.wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); max-width: 560px; margin: 0 auto; }
+
+/* Score bug */
+.bug { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg); border-bottom: 1px solid var(--line); }
+.bug .wrap { padding-block: 10px 10px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.bug-row { display: flex; align-items: center; gap: 10px; }
+.brand { font-family: var(--font-display); font-weight: 800; font-size: 20px; letter-spacing: .08em; }
+.brand b { color: var(--gold); font-weight: 800; }
+.season-chip { font-family: var(--font-display); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.bug-stats { margin-left: auto; display: flex; gap: 2px; }
+.stat-box { background: var(--panel-2); padding: 3px 10px; display: grid; justify-items: center; line-height: 1; min-width: 52px; }
+.stat-box:first-child { border-radius: 8px 0 0 8px; }
+.stat-box:last-child { border-radius: 0 8px 8px 0; background: var(--gold); color: var(--gold-ink); }
+.stat-box small { font-family: var(--font-display); font-size: 10px; letter-spacing: .14em; font-weight: 600; opacity: .8; }
+.stat-box span { font-family: var(--font-display); font-weight: 800; font-size: 22px; }
+.xpbar { display: flex; align-items: center; gap: 10px; }
+.track { flex: 1; height: 6px; border-radius: 3px; background: var(--panel-2); overflow: hidden; }
+.track i { display: block; height: 100%; background: var(--gold); border-radius: 3px; transition: width .6s cubic-bezier(.2,.8,.2,1); }
+.xpbar .label { white-space: nowrap; }
+
+main { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+.view { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; padding-block: 18px; }
+.card, .list, .season-hero, .field { grid-template-columns: minmax(0, 1fr); }
+.view-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.view-head h1 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 30px; text-transform: uppercase; letter-spacing: .01em; line-height: 1; }
+.view-head .sub { color: var(--muted); font-size: 13px; }
+
+/* Day XP chevron */
+.dayxp { display: flex; align-items: center; gap: 12px; background: var(--panel); border-radius: var(--r); padding: 14px 16px; }
+.dayxp .big { font-family: var(--font-display); font-weight: 800; font-size: 40px; line-height: .9; }
+.dayxp .big em { font-style: normal; color: var(--gold); }
+.dayxp .meta { display: grid; gap: 2px; min-width: 0; }
+.dayxp .done-count { margin-left: auto; text-align: right; }
+
+/* Habit rows */
+.list { display: grid; gap: 8px; }
+.habit { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; background: var(--panel); border-radius: var(--r); padding: 12px 12px 12px 16px; min-height: 68px; position: relative; overflow: hidden; }
+.habit::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--line); }
+.habit.done::before { background: var(--gold); }
+.habit .info { display: grid; gap: 3px; min-width: 0; }
+.habit .name { font-family: var(--font-display); font-weight: 700; font-size: 19px; text-transform: uppercase; letter-spacing: .02em; line-height: 1.05; }
+.habit .detail { color: var(--muted); font-size: 13px; }
+.habit .detail strong { color: var(--fg); font-weight: 600; }
+.pill { display: inline-block; font-family: var(--font-display); font-weight: 700; font-size: 12px; letter-spacing: .06em; padding: 1px 7px; border-radius: 999px; background: var(--panel-2); color: var(--muted); vertical-align: 1px; margin-left: 6px; }
+.habit.done .pill { background: rgba(242,179,61,.16); color: var(--gold); }
+.ctrl { display: flex; align-items: center; gap: 6px; }
+.btn { min-height: 44px; min-width: 44px; padding: 0 14px; border-radius: 12px; background: var(--panel-2); font-family: var(--font-display); font-weight: 700; font-size: 16px; letter-spacing: .04em; text-transform: uppercase; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: transform .08s; }
+.btn:active { transform: scale(.96); }
+.btn.gold { background: var(--gold); color: var(--gold-ink); }
+.btn.ghost { background: transparent; border: 1px solid var(--line); }
+.btn.danger { background: transparent; border: 1px solid var(--bad); color: var(--bad); }
+.btn[disabled] { opacity: .4; }
+.check { width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; transition: background .15s, border-color .15s; }
+.check svg { width: 22px; height: 22px; opacity: 0; transition: opacity .15s; }
+.habit.done .check { background: var(--gold); border-color: var(--gold); }
+.habit.done .check svg { opacity: 1; }
+.bottles { display: flex; gap: 4px; margin-top: 2px; }
+.bottles i { width: 10px; height: 16px; border-radius: 3px 3px 2px 2px; background: var(--panel-2); border: 1px solid var(--line); }
+.bottles i.on { background: var(--gold); border-color: var(--gold); }
+
+/* Final whistle */
+.card { background: var(--panel); border-radius: var(--r); padding: 16px; display: grid; gap: 10px; }
+.card h2 { margin: 0; font-family: var(--font-display); font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.awards { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.awards li { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.awards li:last-child { border-bottom: 0; padding-bottom: 0; }
+.awards li span:last-child { color: var(--gold); font-family: var(--font-display); font-weight: 700; font-size: 16px; }
+.empty { color: var(--muted); font-size: 14px; margin: 0; }
+
+/* Week strips */
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.week span { height: 26px; border-radius: 6px; background: var(--panel-2); display: grid; place-items: center; font-family: var(--font-display); font-size: 11px; color: var(--muted); font-weight: 600; }
+.week span.on { background: var(--gold); color: var(--gold-ink); }
+.week span.future { background: transparent; border: 1px dashed var(--line); }
+.week span.today { outline: 1.5px solid var(--fg); outline-offset: -1.5px; }
+.streak-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.streak-row .name { font-family: var(--font-display); font-weight: 700; font-size: 17px; text-transform: uppercase; }
+
+/* Player */
+.player-card { background: linear-gradient(180deg, var(--panel-2), var(--panel)); border-radius: var(--r); padding: 18px 16px; display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; border: 1px solid var(--line); }
+.ovr { width: 92px; height: 92px; border-radius: 16px; background: var(--gold); color: var(--gold-ink); display: grid; place-items: center; align-content: center; line-height: .85; }
+.ovr b { font-family: var(--font-display); font-weight: 800; font-size: 50px; }
+.ovr small { font-family: var(--font-display); font-weight: 700; font-size: 13px; letter-spacing: .2em; }
+.player-card h2 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 26px; text-transform: uppercase; line-height: 1; }
+.player-card .who { display: grid; gap: 4px; min-width: 0; }
+.attr { display: grid; grid-template-columns: 3.4em 1fr 2.4em; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.attr:last-child { border-bottom: 0; }
+.attr .code { font-family: var(--font-display); font-weight: 800; font-size: 17px; letter-spacing: .04em; }
+.attr .mid { display: grid; gap: 4px; min-width: 0; }
+.attr .mid .top { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); }
+.attr .rating { font-family: var(--font-display); font-weight: 800; font-size: 26px; text-align: right; }
+.attr .bar { height: 8px; border-radius: 4px; background: var(--panel-2); position: relative; overflow: hidden; }
+.attr .bar i { position: absolute; inset: 0 auto 0 0; background: var(--fg); opacity: .85; border-radius: 4px; }
+.attr .bar b { position: absolute; top: 0; bottom: 0; background: var(--gold); border-radius: 0 4px 4px 0; }
+.focus-tag { font-family: var(--font-display); font-size: 10.5px; letter-spacing: .14em; font-weight: 700; color: var(--gold); border: 1px solid var(--gold); border-radius: 4px; padding: 0 4px; margin-left: 6px; }
+
+/* Season */
+.season-hero { background: var(--panel); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; border: 1px solid var(--line); }
+.season-hero h2 { margin: 0; font-family: var(--font-display); font-size: 28px; font-weight: 800; text-transform: uppercase; line-height: 1; }
+.focus-list { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font-family: var(--font-display); text-transform: uppercase; font-weight: 700; letter-spacing: .06em; font-size: 13px; padding: 4px 10px; border-radius: 999px; background: rgba(242,179,61,.14); color: var(--gold); }
+.row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+textarea, input[type=text], input[type=number] { width: 100%; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 10px; padding: 12px; font: inherit; font-size: 16px; }
+textarea { min-height: 120px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.history { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.history li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.history li:last-child { border-bottom: 0; }
+.history .when { color: var(--muted); font-size: 12px; width: 5.5em; flex: none; }
+.history .what { flex: 1; min-width: 0; }
+.history .x { min-height: 36px; min-width: 36px; border-radius: 8px; color: var(--muted); }
+.notice { font-size: 13px; color: var(--muted); border-left: 3px solid var(--gold); padding-left: 10px; }
+.notice.warn { border-color: var(--bad); }
+
+/* Tab bar */
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; background: rgba(10,15,28,.96); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.tabs .inner { display: grid; grid-template-columns: repeat(5, 1fr); max-width: 560px; margin: 0 auto; align-items: center; }
+.tab { min-height: 60px; display: grid; justify-items: center; align-content: center; gap: 3px; color: var(--muted); font-family: var(--font-display); font-size: 11.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.tab svg { width: 22px; height: 22px; }
+.tab[aria-current="page"] { color: var(--fg); }
+.tab[aria-current="page"] svg { color: var(--gold); }
+.tab.plus span.disc { width: 54px; height: 54px; border-radius: 16px; background: var(--gold); color: var(--gold-ink); display: grid; place-items: center; transform: translateY(-10px); box-shadow: 0 6px 18px rgba(242,179,61,.25); }
+.tab.plus svg { width: 26px; height: 26px; color: var(--gold-ink); }
+
+/* Sheet */
+.scrim { position: fixed; inset: 0; z-index: 40; background: rgba(3,6,14,.6); }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; background: var(--panel); border-radius: 20px 20px 0 0; border-top: 1px solid var(--line); max-height: 88%; overflow-y: auto; padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); animation: up .22s cubic-bezier(.2,.8,.2,1); }
+.sheet .wrap { padding-block: 10px 6px; display: grid; gap: 14px; }
+.grab { width: 40px; height: 5px; border-radius: 3px; background: var(--line); justify-self: center; }
+.sheet h3 { margin: 0; font-family: var(--font-display); font-size: 24px; font-weight: 800; text-transform: uppercase; }
+.field { display: grid; gap: 6px; }
+.field .err { color: var(--bad); font-size: 13px; }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: var(--bg); padding: 4px; border-radius: 12px; }
+.seg button { min-height: 40px; border-radius: 9px; font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--panel-2); color: var(--fg); }
+.toggle { display: flex; gap: 10px; align-items: center; font-size: 15px; min-height: 44px; }
+.toggle input { width: 22px; height: 22px; accent-color: var(--gold); }
+@keyframes up { from { transform: translateY(30%); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Celebrations */
+.toasts { position: fixed; left: 0; right: 0; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 35; display: grid; justify-items: start; gap: 6px; pointer-events: none; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.lower-third { display: flex; align-items: stretch; font-family: var(--font-display); text-transform: uppercase; animation: slide .35s cubic-bezier(.2,.8,.2,1); filter: drop-shadow(0 6px 14px rgba(0,0,0,.4)); }
+.lower-third .tag { background: var(--gold); color: var(--gold-ink); font-weight: 800; padding: 6px 10px; font-size: 15px; letter-spacing: .06em; clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%); padding-right: 18px; }
+.lower-third .txt { background: var(--fg); color: var(--bg); font-weight: 700; padding: 6px 14px 6px 12px; font-size: 15px; letter-spacing: .04em; margin-left: -8px; clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%); padding-left: 18px; }
+@keyframes slide { from { transform: translateX(-110%); } to { transform: none; } }
+.levelup { position: fixed; inset: 0; z-index: 50; background: rgba(3,6,14,.85); display: grid; place-items: center; padding: 24px; }
+.levelup .box { text-align: center; display: grid; gap: 10px; justify-items: center; animation: pop .45s cubic-bezier(.2,1.4,.3,1); }
+.levelup .lv { font-family: var(--font-display); font-weight: 800; font-size: 96px; line-height: .85; color: var(--gold); }
+.levelup .t { font-family: var(--font-display); font-weight: 800; font-size: 28px; text-transform: uppercase; letter-spacing: .06em; }
+@keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<header class="bug" id="bug"></header>
+<main><div class="wrap" id="view"></div></main>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<nav class="tabs" aria-label="Main">
+  <div class="inner">
+    <button class="tab" data-tab="gameday" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Gameday</button>
+    <button class="tab" data-tab="quests"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>Quests</button>
+    <button class="tab plus" data-tab="log" aria-label="Log activity"><span class="disc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+    <button class="tab" data-tab="player"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M8 17c1-2 2.5-3 4-3s3 1 4 3"/></svg>Player</button>
+    <button class="tab" data-tab="season"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/></svg>Season</button>
+  </div>
+</nav>
+
+<script>
+/*__ENGINE__*/
+</script>
+<script>
+(function () {
+  'use strict';
+  var E = window.Engine;
+  var $ = function (s, el) { return (el || document).querySelector(s); };
+  var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="#1A1204" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+
+  /* ---------------- storage: IndexedDB, then localStorage, then memory ---------------- */
+  var Store = (function () {
+    var db = null, mode = 'memory', mem = {}, kvMem = {};
+    function idbOpen() {
+      return new Promise(function (res, rej) {
+        try {
+          var req = indexedDB.open('dynasty', 1);
+          req.onupgradeneeded = function () { var d = req.result; d.createObjectStore('records', { keyPath: 'key' }); d.createObjectStore('kv'); };
+          req.onsuccess = function () { res(req.result); };
+          req.onerror = function () { rej(req.error); };
+        } catch (e) { rej(e); }
+      });
+    }
+    function tx(store, rw, fn) {
+      return new Promise(function (res, rej) {
+        var t = db.transaction(store, rw ? 'readwrite' : 'readonly'); var s = t.objectStore(store); var out = fn(s);
+        t.oncomplete = function () { res(out && out.result !== undefined ? out.result : undefined); };
+        t.onerror = function () { rej(t.error); };
+      });
+    }
+    function lsGet() { try { return JSON.parse(localStorage.getItem('dynasty.records') || '{}'); } catch (e) { return null; } }
+    function lsSet(o) { try { localStorage.setItem('dynasty.records', JSON.stringify(o)); return true; } catch (e) { return false; } }
+    return {
+      init: function () {
+        return idbOpen().then(function (d) { db = d; mode = 'idb'; }).catch(function () {
+          var o = lsGet(); if (o !== null && lsSet(o)) { mem = o; mode = 'ls'; } else mode = 'memory';
+        }).then(function () {
+          try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+          return mode;
+        });
+      },
+      mode: function () { return mode; },
+      all: function () {
+        if (mode === 'idb') return tx('records', false, function (s) { return s.getAll(); });
+        return Promise.resolve(Object.keys(mem).map(function (k) { return mem[k]; }));
+      },
+      put: function (r) {
+        r.key = r.type + ':' + r.date; r.updatedAt = Date.now();
+        if (mode === 'idb') return tx('records', true, function (s) { s.put(r); });
+        mem[r.key] = r; if (mode === 'ls') lsSet(mem); return Promise.resolve();
+      },
+      del: function (key) {
+        if (mode === 'idb') return tx('records', true, function (s) { s.delete(key); });
+        delete mem[key]; if (mode === 'ls') lsSet(mem); return Promise.resolve();
+      },
+      replaceAll: function (list) {
+        if (mode === 'idb') return tx('records', true, function (s) { s.clear(); list.forEach(function (r) { s.put(r); }); });
+        mem = {}; list.forEach(function (r) { mem[r.key] = r; }); if (mode === 'ls') lsSet(mem); return Promise.resolve();
+      },
+      getKV: function (k) {
+        if (mode === 'idb') return tx('kv', false, function (s) { return s.get(k); });
+        try { var v = localStorage.getItem('dynasty.kv.' + k); return Promise.resolve(v ? JSON.parse(v) : kvMem[k]); } catch (e) { return Promise.resolve(kvMem[k]); }
+      },
+      setKV: function (k, v) {
+        if (mode === 'idb') return tx('kv', true, function (s) { s.put(v, k); });
+        kvMem[k] = v; try { localStorage.setItem('dynasty.kv.' + k, JSON.stringify(v)); } catch (e) {} return Promise.resolve();
+      }
+    };
+  })();
+
+  /* ---------------- state ---------------- */
+  var S = { records: [], tab: 'gameday', logOffset: 0, calc: null, settings: { sound: true, lastBackup: null } };
+  var inFrame = (function () { try { return window.self !== window.top; } catch (e) { return true; } })();
+
+  function today() { return E.localToday(); }
+  function rec(type, date) { for (var i = 0; i < S.records.length; i++) { var r = S.records[i]; if (r.type === type && r.date === date) return r; } return null; }
+  function lastRead(before) {
+    var best = null;
+    S.records.forEach(function (r) { if (r.type === 'read' && r.date < before && (!best || r.date > best.date)) best = r; });
+    return best;
+  }
+
+  function recompute() { return E.compute(S.records, today()); }
+
+  function save(type, date, value) {
+    var prev = S.calc;
+    var p = (value === null || value === false || value === 0) ? Store.del(type + ':' + date) : Store.put({ type: type, date: date, value: value });
+    return p.then(reload).then(function () { celebrate(prev, S.calc, date); }).catch(function (e) {
+      toast('Save failed', 'Your last change was not saved. Try again.'); console.error(e);
+    });
+  }
+  function reload() {
+    return Store.all().then(function (list) { S.records = list || []; S.calc = recompute(); render(); });
+  }
+
+  /* ---------------- celebrations ---------------- */
+  function toast(tag, txt) {
+    var el = document.createElement('div'); el.className = 'lower-third';
+    el.innerHTML = '<span class="tag">' + esc(tag) + '</span><span class="txt">' + esc(txt) + '</span>';
+    var box = $('#toasts'); while (box.children.length >= 2) box.firstChild.remove(); box.appendChild(el); setTimeout(function () { el.remove(); }, 2600);
+  }
+  var actx = null;
+  function horn(big) {
+    if (!S.settings.sound) return;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      var notes = big ? [392, 523.25, 659.25, 783.99] : [659.25, 880];
+      notes.forEach(function (f, i) {
+        var o = actx.createOscillator(), g = actx.createGain(), t0 = actx.currentTime + i * 0.09;
+        o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(big ? 0.18 : 0.1, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + (big ? 0.5 : 0.22));
+        o.connect(g).connect(actx.destination); o.start(t0); o.stop(t0 + 0.6);
+      });
+    } catch (e) {}
+  }
+  function celebrate(a, b, date) {
+    if (!a || !b) return;
+    var dx = (b.byDay[date] ? b.byDay[date].xp : 0) - (a.byDay[date] ? a.byDay[date].xp : 0);
+    if (dx > 0) { toast('+' + dx + ' XP', date === b.today ? 'Logged' : 'Logged for ' + shortDate(date)); horn(false); }
+    E.ATTRS.forEach(function (k) {
+      if (b.ratings[k].rating > a.ratings[k].rating) toast(k + ' ' + b.ratings[k].rating + ' ▲', E.ATTR_NAMES[k] + ' up');
+    });
+    if (b.level > a.level) levelUp(b);
+  }
+  function levelUp(c) {
+    horn(true);
+    var el = document.createElement('div'); el.className = 'levelup'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Level up');
+    var newTitle = c.title !== E.titleFor(c.level - 1);
+    el.innerHTML = '<div class="box"><div class="label">Player level up</div><div class="lv num">' + c.level + '</div>' +
+      '<div class="t">' + (newTitle ? 'New title: ' + esc(c.title) : esc(c.title)) + '</div>' +
+      '<button class="btn gold" style="margin-top:14px">Keep going</button></div>';
+    document.body.appendChild(el);
+    var close = function () { el.remove(); };
+    el.querySelector('button').addEventListener('click', close); el.addEventListener('click', function (e) { if (e.target === el) close(); });
+    el.querySelector('button').focus();
+  }
+
+  /* ---------------- formatting ---------------- */
+  var DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function dObj(d) { return new Date(d + 'T12:00:00'); }
+  function shortDate(d) { var o = dObj(d); return DOW[o.getDay()] + ' ' + MON[o.getMonth()] + ' ' + o.getDate(); }
+  function fmt(n) { return Number(n).toLocaleString('en-US'); }
+
+  /* ---------------- score bug ---------------- */
+  function renderBug() {
+    var c = S.calc, s = c.season;
+    var chip = s.id === 'pre' ? 'Preseason · Day ' + s.day + '/' + s.totalDays
+      : s.id === 'off' ? 'Offseason' : s.label + ' · Week ' + s.week + ' of ' + s.weeks;
+    var pct = Math.min(100, (c.levelInto / c.levelNeed) * 100);
+    $('#bug').innerHTML = '<div class="wrap"><div class="bug-row"><div class="brand">DYNAST<b>Y</b></div>' +
+      '<div class="season-chip">' + esc(chip) + '</div>' +
+      '<div class="bug-stats"><div class="stat-box"><small>LVL</small><span class="num">' + c.level + '</span></div>' +
+      '<div class="stat-box"><small>OVR</small><span class="num">' + c.ovr + '</span></div></div></div>' +
+      '<div class="xpbar"><span class="label">' + esc(c.title) + '</span><div class="track" role="progressbar" aria-label="XP to next level" aria-valuemin="0" aria-valuemax="' + c.levelNeed + '" aria-valuenow="' + c.levelInto + '"><i style="width:' + pct + '%"></i></div>' +
+      '<span class="label num">' + fmt(c.levelInto) + ' / ' + fmt(c.levelNeed) + ' XP</span></div></div>';
+  }
+
+  /* ---------------- habit rows (used by Gameday and Log) ---------------- */
+  var HABIT_META = {
+    water: { name: 'Water', xp: 25 }, steps: { name: 'Steps', xp: 25 }, read: { name: 'Reading', xp: 25 },
+    walk: { name: 'Daily walk', xp: 15 }, vitamins: { name: 'Vitamins', xp: 10 }, journal: { name: 'Journal', xp: 20 }
+  };
+  function habitRows(date) {
+    var c = S.calc;
+    return E.HABITS.map(function (h) {
+      var r = rec(h, date), meta = HABIT_META[h], done = false, detail = '', ctrl = '';
+      if (h === 'water') {
+        var b = r ? r.value : 0; done = b >= E.WATER_GOAL_BOTTLES;
+        var cells = ''; for (var i = 0; i < Math.max(E.WATER_GOAL_BOTTLES, b); i++) cells += '<i class="' + (i < b ? 'on' : '') + '"></i>';
+        detail = '<strong class="num">' + b + ' of ' + E.WATER_GOAL_BOTTLES + '</strong> bottles · ' + (b * E.WATER_BOTTLE_OZ) + ' oz<div class="bottles" aria-hidden="true">' + cells + '</div>';
+        ctrl = '<button class="btn ghost" data-act="water-minus" aria-label="Remove a bottle"' + (b ? '' : ' disabled') + '>−</button><button class="btn gold" data-act="water-plus">+40 oz</button>';
+      } else if (h === 'steps') {
+        var v = r ? r.value : null; done = v >= E.STEPS_GOAL;
+        detail = v === null ? 'Goal ' + fmt(E.STEPS_GOAL) + ' · not logged' : '<strong class="num">' + fmt(v) + '</strong> of ' + fmt(E.STEPS_GOAL);
+        ctrl = '<button class="btn" data-act="steps">' + (v === null ? 'Enter' : 'Edit') + '</button>';
+      } else if (h === 'read') {
+        var info = c.readInfo[date];
+        if (r && info) { done = info.delta >= E.READ_GOAL_PCT; detail = '<strong>' + esc(r.value.book || 'Book') + '</strong> · <span class="num">' + info.pct + '% (+' + info.delta + ' today)</span>'; }
+        else { var lr = lastRead(date); detail = lr ? esc(lr.value.book) + ' · last at ' + lr.value.pct + '%' : 'Goal +5% in your book'; }
+        ctrl = '<button class="btn" data-act="read">' + (r ? 'Edit' : 'Update %') + '</button>';
+      } else {
+        done = !!(r && r.value);
+        detail = done ? 'Done' : 'Tap to check off';
+        ctrl = '<button class="check" data-act="toggle" aria-pressed="' + done + '" aria-label="' + meta.name + (done ? ', done' : ', not done') + '">' + CHECK + '</button>';
+      }
+      var streak = c.habits[h].streak;
+      return '<div class="habit' + (done ? ' done' : '') + '" data-habit="' + h + '" data-date="' + date + '">' +
+        '<div class="info"><div class="name">' + meta.name + '<span class="pill num">+' + meta.xp + ' XP</span></div><div class="detail">' + detail + '</div>' +
+        (streak ? '<div class="detail">Week streak ' + streak + '</div>' : '') + '</div><div class="ctrl">' + ctrl + '</div></div>';
+    }).join('');
+  }
+
+  /* ---------------- views ---------------- */
+  function viewGameday() {
+    var c = S.calc, d = c.today, day = c.byDay[d] || { xp: 0, awards: [] };
+    var doneCount = E.HABITS.filter(function (h) { return c.habits[h].today; }).length;
+    var awards = day.awards.length ? '<ul class="awards">' + day.awards.map(function (a) { return '<li><span>' + esc(a.label) + '</span><span class="num">+' + a.xp + '</span></li>'; }).join('') + '</ul>'
+      : '<p class="empty">Nothing logged yet today. Start with a bottle of water: tap +40 oz.</p>';
+    return '<section class="view">' +
+      '<div class="view-head"><h1>' + shortDate(d) + '</h1><span class="sub">Today’s quests</span></div>' +
+      '<div class="dayxp"><div class="big num"><em>' + day.xp + '</em></div><div class="meta"><span class="label">XP today</span><span class="sub" style="color:var(--muted);font-size:13px">' + fmt(c.xp) + ' career XP</span></div>' +
+      '<div class="done-count"><div class="big num" style="font-size:30px">' + doneCount + '<span style="color:var(--muted)">/6</span></div><span class="label">Habits</span></div></div>' +
+      '<div class="list">' + habitRows(d) + '</div>' +
+      '<div class="card"><h2>Final Whistle</h2>' + awards + '</div>' +
+      backupNag() +
+      '</section>';
+  }
+  function backupNag() {
+    if (!S.records.length) return '';
+    var lb = S.settings.lastBackup;
+    var days = lb ? Math.floor((Date.now() - lb) / 864e5) : null;
+    if (days !== null && days < 7) return '';
+    return '<p class="notice">' + (lb ? 'Last backup was ' + days + ' days ago.' : 'You haven’t made a backup yet.') + ' <button class="btn ghost" data-act="go-season" style="min-height:36px;margin-left:6px">Back up</button></p>';
+  }
+  function viewLog() {
+    var d = E.addDays(today(), -S.logOffset);
+    var lab = ['Today', 'Yesterday', '2 days ago'];
+    return '<section class="view">' +
+      '<div class="view-head"><h1>Log</h1><span class="sub">' + shortDate(d) + '</span></div>' +
+      '<div class="seg" role="group" aria-label="Which day">' + lab.map(function (l, i) { return '<button data-act="log-day" data-off="' + i + '" aria-pressed="' + (S.logOffset === i) + '">' + l + '</button>'; }).join('') + '</div>' +
+      '<p class="notice">Forgot to log? You can fill in up to 2 days back. Older days are locked so the record stays honest.</p>' +
+      '<div class="list">' + habitRows(d) + '</div>' +
+      '<p class="notice">Workouts, meals, sleep, Bonds, Echo, career and wealth logging arrive in the next build stages.</p>' +
+      '</section>';
+  }
+  function viewQuests() {
+    var c = S.calc, t = c.today;
+    var rows = E.HABITS.map(function (h) {
+      var hb = c.habits[h];
+      var cells = hb.week.map(function (x) { var o = dObj(x.date); return '<span class="' + (x.done ? 'on' : '') + (x.future ? ' future' : '') + (x.date === t ? ' today' : '') + '">' + DOW[o.getDay()].charAt(0) + '</span>'; }).join('');
+      return '<div class="card" style="gap:8px"><div class="streak-row"><span class="name">' + HABIT_META[h].name + '</span><span class="label num">' + hb.weekCount + ' of 7 · need 5</span></div>' +
+        '<div class="week" aria-label="This week">' + cells + '</div>' +
+        '<div class="streak-row"><span class="sub" style="color:var(--muted);font-size:13px">Week streak <b class="num" style="color:var(--fg)">' + hb.streak + '</b></span><span class="sub" style="color:var(--muted);font-size:13px">Best <b class="num" style="color:var(--fg)">' + hb.best + '</b></span></div></div>';
+    }).join('');
+    return '<section class="view"><div class="view-head"><h1>This week</h1><span class="sub">Mon to Sun</span></div>' +
+      '<p class="notice">Streaks count weeks, not days. Hit a habit on 5 of 7 days and the streak lives, so one off day never breaks it.</p>' +
+      rows +
+      '<p class="notice">Weekly quests, quest lines (The Manuscript, The Director Run, The $90K Run) and boss battles unlock in a later build stage.</p></section>';
+  }
+  function viewPlayer() {
+    var c = S.calc, focus = c.season.focus;
+    var nt = c.nextTitle;
+    var attrs = E.ATTRS.map(function (k) {
+      var r = c.ratings[k], into = r.need ? Math.min(1, r.into / r.need) : 1;
+      return '<div class="attr"><span class="code">' + k + '</span><div class="mid"><div class="top"><span>' + E.ATTR_NAMES[k] + (focus.indexOf(k) >= 0 ? '<span class="focus-tag">FOCUS</span>' : '') + '</span><span class="num">' + (r.need ? Math.floor(r.into) + ' / ' + r.need + ' to ' + (r.rating + 1) : 'Maxed') + '</span></div>' +
+        '<div class="bar" role="progressbar" aria-label="' + E.ATTR_NAMES[k] + ' progress to next point" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(into * 100) + '"><b style="left:0;width:' + (into * 100) + '%"></b></div></div>' +
+        '<span class="rating num">' + r.rating + '</span></div>';
+    }).join('');
+    return '<section class="view">' +
+      '<div class="player-card"><div class="ovr"><b class="num">' + c.ovr + '</b><small>OVR</small></div><div class="who"><span class="label">Michael</span><h2>' + esc(c.title) + '</h2>' +
+      '<span class="sub" style="color:var(--muted);font-size:13px">Level ' + c.level + ' · ' + fmt(c.xp) + ' XP' + (nt ? ' · ' + esc(nt.title) + ' at level ' + nt.level : '') + '</span></div></div>' +
+      '<div class="card" style="gap:0"><h2 style="margin-bottom:6px">Ratings</h2>' + attrs + '</div>' +
+      '<p class="notice">Each gold bar fills toward that attribute’s next rating point, and each point costs more than the last. Focus attributes earn 1.5× points this season. Ratings never go down.</p>' +
+      '</section>';
+  }
+  function viewSeason() {
+    var c = S.calc, s = c.season, s1 = E.SEASONS[1];
+    var hero;
+    if (s.id === 'pre') {
+      var left = s.totalDays - s.day + 1;
+      hero = '<div class="season-hero"><span class="label">Preseason</span><h2>Season 1 kicks off Mon Oct 26</h2>' +
+        '<span class="sub" style="color:var(--muted)">' + left + ' day' + (left === 1 ? '' : 's') + ' of preseason left. Everything you log now already counts.</span>' +
+        '<div class="track" style="height:8px"><i style="width:' + (s.day / s.totalDays * 100) + '%"></i></div>' +
+        '<div><span class="label">Season 1 focus</span><div class="focus-list" style="margin-top:6px">' + s.focus.map(function (k) { return '<span class="chip">' + E.ATTR_NAMES[k] + '</span>'; }).join('') + '</div></div></div>';
+    } else {
+      hero = '<div class="season-hero"><span class="label">' + esc(s.label) + '</span><h2>Week ' + s.week + ' of ' + s.weeks + '</h2>' +
+        '<span class="sub" style="color:var(--muted)">' + shortDate(s.start) + ' to ' + shortDate(s.end) + '</span>' +
+        '<div class="track" style="height:8px"><i style="width:' + (s.day / Math.max(1, s.totalDays) * 100) + '%"></i></div>' +
+        '<div><span class="label">Focus</span><div class="focus-list" style="margin-top:6px">' + s.focus.map(function (k) { return '<span class="chip">' + E.ATTR_NAMES[k] + '</span>'; }).join('') + '</div></div></div>';
+    }
+    var recent = S.records.slice().sort(function (a, b) { return a.date === b.date ? (b.updatedAt - a.updatedAt) : (a.date < b.date ? 1 : -1); }).slice(0, 25);
+    var hist = recent.length ? '<ul class="history">' + recent.map(function (r) {
+      return '<li><span class="when">' + shortDate(r.date) + '</span><span class="what">' + esc(describe(r)) + '</span><button class="x" data-act="del" data-key="' + esc(r.key) + '" aria-label="Delete ' + esc(describe(r)) + '">✕</button></li>';
+    }).join('') + '</ul>' : '<p class="empty">No entries yet. Anything you log shows up here, where you can delete it.</p>';
+    var storageNote = Store.mode() === 'idb' ? (inFrame ? '<p class="notice warn">Preview mode: you’re running Dynasty inside Claude, where saved data is not guaranteed to last. Use the installed app for real logging.</p>' : '<p class="notice">Saved on this device.</p>')
+      : '<p class="notice warn">This browser blocked app storage, so entries last only until you close the app. Open Dynasty from your Home Screen icon.</p>';
+    return '<section class="view">' + hero +
+      '<div class="card"><h2>Front Office · Backup</h2>' + storageNote +
+      '<p class="empty" style="color:var(--muted)">Your data lives only on this phone. A backup is a small file you can save to iCloud Drive and restore from on any device.' + (S.settings.lastBackup ? ' Last backup: ' + shortDate(E.localToday(new Date(S.settings.lastBackup))) + '.' : '') + '</p>' +
+      '<div class="row-actions"><button class="btn gold" data-act="export">Save backup</button><button class="btn ghost" data-act="copy">Copy backup text</button><button class="btn ghost" data-act="restore">Restore</button></div>' +
+      '<div id="export-out"></div></div>' +
+      '<div class="card"><h2>Sound</h2><label class="toggle"><input type="checkbox" id="sound" data-act="sound"' + (S.settings.sound ? ' checked' : '') + '> Play a horn on level-ups and XP</label></div>' +
+      '<div class="card"><h2>History</h2>' + hist + '</div>' +
+      '</section>';
+  }
+  function describe(r) {
+    switch (r.type) {
+      case 'water': return 'Water · ' + r.value + ' bottle' + (r.value === 1 ? '' : 's');
+      case 'steps': return 'Steps · ' + fmt(r.value);
+      case 'read': return 'Reading · ' + (r.value.book || 'Book') + ' at ' + r.value.pct + '%';
+      default: return HABIT_META[r.type] ? HABIT_META[r.type].name : r.type;
+    }
+  }
+
+  function render() {
+    if (!S.calc) return;
+    renderBug();
+    var v = { gameday: viewGameday, log: viewLog, quests: viewQuests, player: viewPlayer, season: viewSeason }[S.tab]();
+    $('#view').innerHTML = v;
+    document.querySelectorAll('.tab').forEach(function (b) { if (b.dataset.tab === S.tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  }
+
+  /* ---------------- sheets ---------------- */
+  function sheet(html, onReady) {
+    closeSheet();
+    var scrim = document.createElement('div'); scrim.className = 'scrim'; scrim.id = 'scrim';
+    var sh = document.createElement('div'); sh.className = 'sheet'; sh.id = 'sheet'; sh.setAttribute('role', 'dialog'); sh.setAttribute('aria-modal', 'true');
+    sh.innerHTML = '<div class="wrap"><div class="grab"></div>' + html + '</div>';
+    document.body.appendChild(scrim); document.body.appendChild(sh);
+    scrim.addEventListener('click', closeSheet);
+    if (onReady) onReady(sh);
+  }
+  function closeSheet() { var a = $('#sheet'), b = $('#scrim'); if (a) a.remove(); if (b) b.remove(); }
+
+  function stepsSheet(date) {
+    var r = rec('steps', date);
+    sheet('<h3>Steps · ' + shortDate(date) + '</h3><form id="f" class="field" novalidate><label class="label" for="steps-in">Steps from the Health app</label>' +
+      '<input id="steps-in" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="150000" placeholder="8000" value="' + (r ? r.value : '') + '">' +
+      '<div class="err" id="err" aria-live="polite"></div><div class="row-actions"><button class="btn gold" type="submit">Save steps</button>' + (r ? '<button class="btn danger" type="button" id="clr">Clear</button>' : '') + '<button class="btn ghost" type="button" id="cancel">Cancel</button></div></form>', function (sh) {
+      var inp = $('#steps-in', sh); setTimeout(function () { inp.focus(); }, 50);
+      $('#cancel', sh).onclick = closeSheet;
+      if ($('#clr', sh)) $('#clr', sh).onclick = function () { closeSheet(); save('steps', date, null); };
+      $('#f', sh).onsubmit = function (e) {
+        e.preventDefault();
+        var n = Number(inp.value);
+        if (inp.value === '' || !Number.isInteger(n) || n < 0 || n > 150000) { $('#err', sh).textContent = 'Enter a whole number between 0 and 150,000.'; return; }
+        closeSheet(); save('steps', date, n);
+      };
+    });
+  }
+  function readSheet(date) {
+    var r = rec('read', date), lr = lastRead(date);
+    var book = r ? r.value.book : (lr ? lr.value.book : '');
+    sheet('<h3>Reading · ' + shortDate(date) + '</h3><form id="f" class="field" novalidate style="gap:12px">' +
+      '<div class="field"><label class="label" for="book-in">Book</label><input id="book-in" type="text" autocomplete="off" placeholder="Book title" value="' + esc(book) + '"></div>' +
+      '<div class="field"><label class="label" for="pct-in">Where Kindle says you are (%)</label><input id="pct-in" type="number" inputmode="numeric" min="0" max="100" placeholder="' + (lr ? lr.value.pct + 5 : 5) + '" value="' + (r ? r.value.pct : '') + '">' +
+      (lr ? '<span class="sub" style="color:var(--muted);font-size:13px">Last entry: ' + esc(lr.value.book) + ' at ' + lr.value.pct + '% on ' + shortDate(lr.date) + '</span>' : '') + '</div>' +
+      '<label class="toggle"><input type="checkbox" id="newbook"' + (r && r.value.newBook ? ' checked' : '') + '> I started a new book</label>' +
+      '<div class="err" id="err" aria-live="polite"></div><div class="row-actions"><button class="btn gold" type="submit">Save</button>' + (r ? '<button class="btn danger" type="button" id="clr">Clear</button>' : '') + '<button class="btn ghost" type="button" id="cancel">Cancel</button></div></form>', function (sh) {
+      $('#cancel', sh).onclick = closeSheet;
+      if ($('#clr', sh)) $('#clr', sh).onclick = function () { closeSheet(); save('read', date, null); };
+      var bookIn = $('#book-in', sh), nb = $('#newbook', sh);
+      bookIn.addEventListener('input', function () { if (lr && bookIn.value.trim() && bookIn.value.trim() !== lr.value.book) nb.checked = true; });
+      setTimeout(function () { (book ? $('#pct-in', sh) : bookIn).focus(); }, 50);
+      $('#f', sh).onsubmit = function (e) {
+        e.preventDefault();
+        var b = bookIn.value.trim(), p = Number($('#pct-in', sh).value), isNew = nb.checked || !lr || (lr && b !== lr.value.book);
+        if (!b) { $('#err', sh).textContent = 'Add the book title so progress is tracked per book.'; return; }
+        if ($('#pct-in', sh).value === '' || !Number.isInteger(p) || p < 0 || p > 100) { $('#err', sh).textContent = 'Enter a whole percent from 0 to 100.'; return; }
+        if (!isNew && lr && p < lr.value.pct) { $('#err', sh).textContent = 'That’s lower than your last entry (' + lr.value.pct + '%). Check the number, or tick “new book”.'; return; }
+        closeSheet(); save('read', date, { book: b, pct: p, newBook: isNew && !!lr });
+      };
+    });
+  }
+
+  /* ---------------- backup ---------------- */
+  function backupText() { return JSON.stringify({ app: 'dynasty', version: 1, exportedAt: new Date().toISOString(), records: S.records }); }
+  function markBackedUp() { S.settings.lastBackup = Date.now(); Store.setKV('settings', S.settings); }
+  function doExport() {
+    var txt = backupText(), name = 'dynasty-backup-' + today() + '.json', out = $('#export-out');
+    var file; try { file = new File([txt], name, { type: 'application/json' }); } catch (e) {}
+    var p = Promise.reject();
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) p = navigator.share({ files: [file], title: 'Dynasty backup' });
+    p.then(function () { markBackedUp(); toast('Saved', 'Backup file shared'); render(); }).catch(function (err) {
+      if (err && err.name === 'AbortError') return;
+      try {
+        var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+      } catch (e) {}
+      if (out) out.innerHTML = '<p class="notice">If no file appeared, use Copy backup text and paste it into a note or file. The backup has ' + S.records.length + ' entries.</p>';
+      markBackedUp();
+    });
+  }
+  function doCopy() {
+    var txt = backupText(), out = $('#export-out');
+    var show = function () { out.innerHTML = '<label class="label" for="bk-text">Backup text (select all and copy)</label><textarea id="bk-text" readonly>' + esc(txt) + '</textarea>'; var t = $('#bk-text'); t.focus(); t.select(); };
+    try {
+      navigator.clipboard.writeText(txt).then(function () { markBackedUp(); toast('Copied', S.records.length + ' entries'); out.innerHTML = '<p class="notice">Copied. Paste it into a note or a file in iCloud Drive.</p>'; }, function () { show(); markBackedUp(); });
+    } catch (e) { show(); markBackedUp(); }
+  }
+  function restoreSheet() {
+    sheet('<h3>Restore backup</h3><p class="notice warn">Restoring replaces everything on this device with the backup.</p>' +
+      '<div class="field"><label class="label" for="bk-file">Choose a backup file</label><input id="bk-file" type="file" accept="application/json,.json,text/plain"></div>' +
+      '<div class="field"><label class="label" for="bk-paste">Or paste backup text</label><textarea id="bk-paste" placeholder="{&quot;app&quot;:&quot;dynasty&quot;, ...}"></textarea></div>' +
+      '<div class="err" id="err" aria-live="polite"></div><div class="row-actions"><button class="btn gold" id="go">Replace my data</button><button class="btn ghost" id="cancel">Cancel</button></div>', function (sh) {
+      $('#cancel', sh).onclick = closeSheet;
+      var fileTxt = null;
+      $('#bk-file', sh).onchange = function (e) { var f = e.target.files[0]; if (!f) return; var fr = new FileReader(); fr.onload = function () { fileTxt = fr.result; $('#err', sh).textContent = ''; }; fr.readAsText(f); };
+      $('#go', sh).onclick = function () {
+        var raw = fileTxt || $('#bk-paste', sh).value.trim(), data;
+        try { data = JSON.parse(raw); } catch (e) { $('#err', sh).textContent = 'That isn’t a Dynasty backup. Choose the .json file or paste the full text.'; return; }
+        if (!data || data.app !== 'dynasty' || !Array.isArray(data.records)) { $('#err', sh).textContent = 'That file isn’t a Dynasty backup.'; return; }
+        var clean = data.records.filter(function (r) { return r && typeof r.type === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.date); })
+          .map(function (r) { return { key: r.type + ':' + r.date, type: r.type, date: r.date, value: r.value, updatedAt: r.updatedAt || 0 }; });
+        Store.replaceAll(clean).then(reload).then(function () { closeSheet(); toast('Restored', clean.length + ' entries'); });
+      };
+    });
+  }
+  function confirmDelete(key) {
+    var r = S.records.filter(function (x) { return x.key === key; })[0]; if (!r) return;
+    sheet('<h3>Delete entry?</h3><p>' + esc(describe(r)) + ' on ' + shortDate(r.date) + '. XP, ratings and streaks recalculate without it.</p>' +
+      '<div class="row-actions"><button class="btn danger" id="yes">Delete</button><button class="btn ghost" id="cancel">Keep it</button></div>', function (sh) {
+      $('#cancel', sh).onclick = closeSheet;
+      $('#yes', sh).onclick = function () { closeSheet(); Store.del(key).then(reload).then(function () { toast('Deleted', describe(r)); }); };
+    });
+  }
+
+  /* ---------------- events ---------------- */
+  var busy = false;
+  document.addEventListener('click', function (e) {
+    var tab = e.target.closest('.tab');
+    if (tab) { S.tab = tab.dataset.tab; if (S.tab === 'log') S.logOffset = 0; render(); window.scrollTo(0, 0); return; }
+    var btn = e.target.closest('[data-act]'); if (!btn || btn.tagName === 'INPUT') return;
+    var act = btn.dataset.act, row = btn.closest('.habit');
+    var h = row && row.dataset.habit, date = row && row.dataset.date;
+    if (busy && (act === 'water-plus' || act === 'water-minus' || act === 'toggle')) return;
+    var guard = function (p) { busy = true; p.then(function () { busy = false; }, function () { busy = false; }); };
+    switch (act) {
+      case 'water-plus': var w = rec('water', date); guard(save('water', date, Math.min(10, (w ? w.value : 0) + 1))); break;
+      case 'water-minus': var w2 = rec('water', date); if (w2) guard(save('water', date, Math.max(0, w2.value - 1))); break;
+      case 'toggle': var t = rec(h, date); guard(save(h, date, t && t.value ? null : true)); break;
+      case 'steps': stepsSheet(date); break;
+      case 'read': readSheet(date); break;
+      case 'log-day': S.logOffset = Number(btn.dataset.off); render(); break;
+      case 'export': doExport(); break;
+      case 'copy': doCopy(); break;
+      case 'restore': restoreSheet(); break;
+      case 'del': confirmDelete(btn.dataset.key); break;
+      case 'go-season': S.tab = 'season'; render(); window.scrollTo(0, 0); break;
+    }
+  });
+  document.addEventListener('change', function (e) {
+    if (e.target.id === 'sound') { S.settings.sound = e.target.checked; Store.setKV('settings', S.settings); }
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSheet(); });
+  // A new day can start while the app sits open.
+  var lastDay = today();
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && today() !== lastDay) { lastDay = today(); S.calc = recompute(); render(); } });
+  setInterval(function () { if (today() !== lastDay) { lastDay = today(); S.calc = recompute(); render(); } }, 60000);
+
+  /* ---------------- install bits (only when running as its own site) ---------------- */
+  if (!inFrame) {
+    try {
+      var m = document.createElement('link'); m.rel = 'manifest'; m.href = 'manifest.webmanifest'; document.head.appendChild(m);
+      var ic = document.createElement('link'); ic.rel = 'apple-touch-icon'; ic.href = 'icon-180.png'; document.head.appendChild(ic);
+      if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(function () {});
+    } catch (e) {}
+  }
+
+  /* ---------------- boot ---------------- */
+  Store.init().then(function () { return Store.getKV('settings'); }).then(function (s) {
+    if (s) { S.settings.sound = s.sound !== false; S.settings.lastBackup = s.lastBackup || null; }
+    return reload();
+  }).catch(function (e) {
+    $('#view').innerHTML = '<section class="view"><p class="notice warn">Dynasty couldn’t open its storage. Close and reopen the app. If it keeps happening, restore from your latest backup.</p></section>';
+    console.error(e);
+  });
+})();
+</script>
