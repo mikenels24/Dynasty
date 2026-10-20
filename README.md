@@ -3,7 +3,7 @@
 Michael's life franchise-mode app: 12-week seasons, 10 rated attributes, quests, and a trophy case.
 
 ## Use it
-Open https://mikenels24.github.io/dynasty/ in Safari on iPhone → Share → Add to Home Screen.
+Open https://mikenels24.github.io/Dynasty/ in Safari on iPhone → Share → Add to Home Screen.
 Your data lives only on that phone. Back up from Season → Front Office.
 
 ## Layout
