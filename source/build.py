@@ -9,7 +9,7 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(ROOT, 'src')
 SITE = os.path.join(ROOT, 'dist', 'site')
 PREV = os.path.join(ROOT, 'dist', 'preview')
-VERSION = '0.1.0'
+VERSION = '0.2.0'
 
 for d in (SITE, PREV):
     shutil.rmtree(d, ignore_errors=True)

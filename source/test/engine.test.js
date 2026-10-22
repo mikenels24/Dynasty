@@ -109,4 +109,65 @@ t('realistic season projection lands near blueprint', () => {
   console.log('   season sim: level', r.level, 'xp', r.xp, 'DIS', r.ratings.DIS.rating, 'MND', r.ratings.MND.rating, 'OVR', r.ovr);
   assert.ok(r.level >= 7 && r.level <= 11);
 });
+
+// ---------- Stage 2 ----------
+t('checklist items score once per day', () => {
+  const d = '2026-10-21';
+  const r = E.compute([rec('workout', d, true), rec('macros', d, true), rec('cardio', d, true), rec('sleep', d, 7.5)], d);
+  assert.strictEqual(r.byDay[d].awards.filter(a => !/^Quest/.test(a.label)).reduce((s, a) => s + a.xp, 0), 60 + 40 + 40 + 30);
+  assert.strictEqual(r.lastWorkout, d);
+});
+t('sleep tiers', () => {
+  const x = h => E.compute([rec('sleep', '2026-10-21', h)], '2026-10-21').byDay['2026-10-21'];
+  const nq = a => a.awards.filter(w => !/^Quest/.test(w.label)).reduce((s, w) => s + w.xp, 0); assert.strictEqual(nq(x(6.5)), 10); assert.strictEqual(nq(x(8)), 30); assert.strictEqual(nq(x(10)), 10); assert.ok(!x(5));
+});
+const mrec = (type, date, value, id) => ({ type, date, value, key: type + ':' + date + ':' + id, createdAt: id, updatedAt: id });
+t('bonds caps: one call a day, two date nights a week', () => {
+  const r = E.compute([
+    mrec('bonds', '2026-10-21', { kind: 'call' }, 1), mrec('bonds', '2026-10-21', { kind: 'call' }, 2),
+    mrec('bonds', '2026-10-21', { kind: 'date' }, 3), mrec('bonds', '2026-10-22', { kind: 'date' }, 4), mrec('bonds', '2026-10-23', { kind: 'date' }, 5),
+  ], '2026-10-23');
+  assert.strictEqual(r.xp, 25 + 50 + 50 + 100); // + preseason Bonds quest
+});
+t('echo chapters: duplicates and 4th in a day earn nothing', () => {
+  const r = E.compute([1, 2, 2, 3, 4].map((c, i) => mrec('echo', '2026-10-28', { chapter: c }, i + 1)), '2026-10-28');
+  assert.strictEqual(r.questLines.manuscript.done, 3);
+  assert.deepStrictEqual(r.questLines.manuscript.chapters, [1, 2, 3]);
+});
+t('career tiers and Director Run', () => {
+  const r = E.compute([mrec('career', '2026-10-28', { title: 'Applied to Acme', tier: 1, director: true }, 1), mrec('career', '2026-10-28', { title: 'Offer', tier: 3 }, 2)], '2026-10-28');
+  assert.strictEqual(r.byDay['2026-10-28'].awards.filter(a => /win/.test(a.label)).reduce((s, a) => s + a.xp, 0), 350);
+  assert.strictEqual(r.questLines.director.wins.length, 1);
+});
+t('wealth: one check-in a month, milestones once', () => {
+  const r = E.compute([
+    mrec('wealth', '2026-11-01', { balance: 81000 }, 1), mrec('wealth', '2026-11-20', { balance: 86000 }, 2),
+    mrec('wealth', '2026-12-01', { balance: 84000 }, 3), mrec('wealth', '2026-12-15', { balance: 86500 }, 4)
+  ], '2026-12-15');
+  const labels = Object.values(r.byDay).flatMap(d => d.awards).map(a => a.label).filter(l => /Wealth|milestone/.test(l));
+  assert.deepStrictEqual(labels, ['Wealth check-in', '$80K milestone', '$85K milestone', 'Wealth check-in']);
+  assert.strictEqual(r.questLines.wealth.latest.balance, 86500);
+});
+t('preseason quests and Perfect Preseason', () => {
+  const recs = [];
+  ['2026-10-20', '2026-10-21'].forEach(d => { E.HABITS.forEach(h => recs.push(rec(h, d, h === 'water' ? 3 : h === 'steps' ? 9000 : h === 'read' ? { book: 'A', pct: d === '2026-10-20' ? 5 : 10 } : true))); recs.push(rec('macros', d, true)); recs.push(rec('sleep', d, 8)); });
+  recs.push(rec('sleep', '2026-10-22', 8)); recs.push(rec('workout', '2026-10-22', true)); recs.push(mrec('bonds', '2026-10-22', { kind: 'call' }, 9));
+  const r = E.compute(recs, '2026-10-22', { firstBackupOn: '2026-10-21' });
+  assert.ok(r.week.isPre);
+  assert.ok(r.week.quests.every(q => q.done), JSON.stringify(r.week.quests.map(q => [q.id, q.progress])));
+  assert.strictEqual(r.week.perfect.doneOn, '2026-10-22');
+});
+t('season weeks: 6 quests, 4 focus + 2 rotating, rotation changes', () => {
+  const r1 = E.compute([], '2026-10-27'), r2 = E.compute([], '2026-11-03');
+  [r1, r2].forEach(r => { assert.strictEqual(r.week.quests.length, 6); assert.strictEqual(r.week.quests.filter(q => q.focus).length, 4); });
+  const rot = r => r.week.quests.filter(q => !q.focus).map(q => q.attr).join();
+  assert.notStrictEqual(rot(r1), rot(r2));
+  console.log('   wk1', r1.week.quests.map(q => q.attr + ':' + q.title).join(' | '));
+  console.log('   wk2', r2.week.quests.map(q => q.attr + ':' + q.title).join(' | '));
+});
+t('quest XP lands on the day the quest completes', () => {
+  const recs = ['2026-10-26', '2026-10-27', '2026-10-28'].map(d => rec('workout', d, true));
+  const r = E.compute(recs, '2026-10-30');
+  assert.ok(r.byDay['2026-10-28'].awards.some(a => a.label === 'Quest: Lift 3 times'));
+});
 console.log(n + ' tests passed');
