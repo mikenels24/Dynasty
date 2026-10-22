@@ -9,7 +9,7 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(ROOT, 'src')
 SITE = os.path.join(ROOT, 'dist', 'site')
 PREV = os.path.join(ROOT, 'dist', 'preview')
-VERSION = '0.2.0'
+VERSION = '0.2.1'
 
 for d in (SITE, PREV):
     shutil.rmtree(d, ignore_errors=True)
@@ -44,7 +44,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   if (url.origin === location.origin) {
     // App files: network first so updates arrive, cache when offline.
-    e.respondWith(fetch(req).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put(req, copy)); return r; }).catch(() => caches.match(req).then(r => r || caches.match('./index.html'))));
+    e.respondWith(fetch(req, { cache: 'no-cache' }).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put(req, copy)); return r; }).catch(() => caches.match(req).then(r => r || caches.match('./index.html'))));
   } else if (url.hostname.endsWith('googleapis.com') || url.hostname.endsWith('gstatic.com')) {
     // Fonts: cache first.
     e.respondWith(caches.match(req).then(r => r || fetch(req).then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); return res; })));
